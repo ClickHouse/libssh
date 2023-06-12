@@ -106,6 +106,7 @@ ssh_session ssh_new(void)
     session->opts.StrictHostKeyChecking = 1;
     session->opts.port = 22;
     session->opts.fd = -1;
+    session->opts.owns_socket = true;
     session->opts.compressionlevel = 7;
     session->opts.nodelay = 0;
     session->opts.identities_only = false;

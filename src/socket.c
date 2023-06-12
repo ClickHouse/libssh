@@ -74,6 +74,7 @@ enum ssh_socket_states_e {
 struct ssh_socket_struct {
   socket_t fd;
   int fd_is_socket;
+  int owns_fd;
   int last_errno;
   int read_wontblock; /* reading now on socket will
                        not block */
@@ -151,6 +152,10 @@ ssh_socket ssh_socket_new(ssh_session session)
         return NULL;
     }
     s->fd = SSH_INVALID_SOCKET;
+    if (session->opts.owns_socket)
+        s->owns_fd = 1;
+    else
+        s->owns_fd = 0;
     s->last_errno = -1;
     s->fd_is_socket = 1;
     s->session = session;
@@ -456,7 +461,7 @@ int ssh_socket_unix(ssh_socket s, const char *path)
  */
 void ssh_socket_close(ssh_socket s)
 {
-    if (ssh_socket_is_open(s)) {
+    if (ssh_socket_is_open(s) && ssh_socket_owns_fd(s)) {
 #ifdef _WIN32
         CLOSE_SOCKET(s->fd);
         s->last_errno = WSAGetLastError();
@@ -527,6 +532,11 @@ void ssh_socket_set_fd(ssh_socket s, socket_t fd)
         ssh_poll_add_events(h, POLLWRNORM);
 #endif
     }
+}
+
+int ssh_socket_owns_fd(ssh_socket s)
+{
+    return s->owns_fd;
 }
 
 /** \internal

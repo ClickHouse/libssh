@@ -263,6 +263,7 @@ struct ssh_session_struct {
         bool identities_only;
         int control_master;
         char *control_path;
+        bool owns_socket;
     } opts;
     /* counters */
     ssh_counter socket_counter;
