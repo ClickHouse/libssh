@@ -2,6 +2,7 @@
 
 #define LIBSSH_STATIC
 
+#include <errno.h>
 #include "torture.h"
 #include "libssh/options.h"
 #include "libssh/session.h"
@@ -671,6 +672,32 @@ static void torture_config_proxyjump(void **state) {
     assert_string_equal(session->opts.ProxyCommand,
                         "ssh -W [%h]:%p 2620:52:0::fed");
 
+    /* Multiple @ is allowed in second jump */
+    torture_write_file(LIBSSH_TESTCONFIG11,
+                       "Host allowed-hostname\n"
+                       "\tProxyJump localhost,user@principal.com@jumpbox:22\n"
+                       "");
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "allowed-hostname");
+    ret = ssh_config_parse_file(session, LIBSSH_TESTCONFIG11);
+    assert_ssh_return_code(session, ret);
+    assert_string_equal(session->opts.ProxyCommand,
+                        "ssh -J user@principal.com@jumpbox:22 -W [%h]:%p localhost");
+
+    /* Multiple @ is allowed */
+    torture_write_file(LIBSSH_TESTCONFIG11,
+                       "Host allowed-hostname\n"
+                       "\tProxyJump user@principal.com@jumpbox:22\n"
+                       "");
+    torture_reset_config(session);
+    ssh_options_set(session, SSH_OPTIONS_HOST, "allowed-hostname");
+    ret = ssh_config_parse_file(session, LIBSSH_TESTCONFIG11);
+    assert_ssh_return_code(session, ret);
+    assert_string_equal(session->opts.ProxyCommand,
+                        "ssh -l user@principal.com -p 22 -W [%h]:%p jumpbox");
+
+    /* In this part, we try various other config files and strings. */
+
     /* Try to create some invalid configurations */
     /* Non-numeric port */
     torture_write_file(LIBSSH_TESTCONFIG11,
@@ -679,16 +706,6 @@ static void torture_config_proxyjump(void **state) {
                        "");
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "bad-port");
-    ret = ssh_config_parse_file(session, LIBSSH_TESTCONFIG11);
-    assert_ssh_return_code_equal(session, ret, SSH_ERROR);
-
-    /* Too many @ */
-    torture_write_file(LIBSSH_TESTCONFIG11,
-                       "Host bad-hostname\n"
-                       "\tProxyJump user@principal.com@jumpbox:22\n"
-                       "");
-    torture_reset_config(session);
-    ssh_options_set(session, SSH_OPTIONS_HOST, "bad-hostname");
     ret = ssh_config_parse_file(session, LIBSSH_TESTCONFIG11);
     assert_ssh_return_code_equal(session, ret, SSH_ERROR);
 
@@ -749,16 +766,6 @@ static void torture_config_proxyjump(void **state) {
                        "");
     torture_reset_config(session);
     ssh_options_set(session, SSH_OPTIONS_HOST, "bad-port-2");
-    ret = ssh_config_parse_file(session, LIBSSH_TESTCONFIG11);
-    assert_ssh_return_code_equal(session, ret, SSH_ERROR);
-
-    /* Too many @ in second jump */
-    torture_write_file(LIBSSH_TESTCONFIG11,
-                       "Host bad-hostname\n"
-                       "\tProxyJump localhost,user@principal.com@jumpbox:22\n"
-                       "");
-    torture_reset_config(session);
-    ssh_options_set(session, SSH_OPTIONS_HOST, "bad-hostname");
     ret = ssh_config_parse_file(session, LIBSSH_TESTCONFIG11);
     assert_ssh_return_code_equal(session, ret, SSH_ERROR);
 
@@ -991,6 +998,53 @@ static void torture_config_match_pattern(void **state)
 
 }
 
+static void torture_config_parse_uri(void **state)
+{
+    char *username = NULL;
+    char *hostname = NULL;
+    char *port = NULL;
+    int rc;
+
+    (void)state; /* unused */
+
+    rc = ssh_config_parse_uri("localhost", &username, &hostname, &port, false);
+    assert_return_code(rc, errno);
+    assert_null(username);
+    assert_string_equal(hostname, "localhost");
+    SAFE_FREE(hostname);
+    assert_null(port);
+
+    rc = ssh_config_parse_uri("1.2.3.4", &username, &hostname, &port, false);
+    assert_return_code(rc, errno);
+    assert_null(username);
+    assert_string_equal(hostname, "1.2.3.4");
+    SAFE_FREE(hostname);
+    assert_null(port);
+
+    rc = ssh_config_parse_uri("1.2.3.4:2222", &username, &hostname, &port, false);
+    assert_return_code(rc, errno);
+    assert_null(username);
+    assert_string_equal(hostname, "1.2.3.4");
+    SAFE_FREE(hostname);
+    assert_string_equal(port, "2222");
+    SAFE_FREE(port);
+
+    rc = ssh_config_parse_uri("[1:2:3::4]:2222", &username, &hostname, &port, false);
+    assert_return_code(rc, errno);
+    assert_null(username);
+    assert_string_equal(hostname, "1:2:3::4");
+    SAFE_FREE(hostname);
+    assert_string_equal(port, "2222");
+    SAFE_FREE(port);
+
+    /* do not want port */
+    rc = ssh_config_parse_uri("1:2:3::4", &username, &hostname, NULL, true);
+    assert_return_code(rc, errno);
+    assert_null(username);
+    assert_string_equal(hostname, "1:2:3::4");
+    SAFE_FREE(hostname);
+}
+
 
 int torture_run_tests(void) {
     int rc;
@@ -1006,6 +1060,7 @@ int torture_run_tests(void) {
         cmocka_unit_test(torture_config_rekey),
         cmocka_unit_test(torture_config_pubkeyacceptedkeytypes),
         cmocka_unit_test(torture_config_match_pattern),
+        cmocka_unit_test(torture_config_parse_uri),
     };
 
 
