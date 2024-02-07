@@ -400,6 +400,7 @@ enum ssh_options_e {
   SSH_OPTIONS_PROCESS_CONFIG,
   SSH_OPTIONS_REKEY_DATA,
   SSH_OPTIONS_REKEY_TIME,
+  SSH_OPTIONS_OWNS_SOCKET,
 };
 
 enum {
@@ -653,6 +654,7 @@ LIBSSH_API int ssh_key_is_private(const ssh_key k);
 LIBSSH_API int ssh_key_cmp(const ssh_key k1,
                            const ssh_key k2,
                            enum ssh_keycmp_e what);
+LIBSSH_API ssh_key ssh_key_dup(const ssh_key key);
 
 LIBSSH_API int ssh_pki_generate(enum ssh_keytypes_e type, int parameter,
         ssh_key *pkey);
@@ -821,6 +823,9 @@ LIBSSH_API int ssh_buffer_add_data(ssh_buffer buffer, const void *data, uint32_t
 LIBSSH_API uint32_t ssh_buffer_get_data(ssh_buffer buffer, void *data, uint32_t requestedlen);
 LIBSSH_API void *ssh_buffer_get(ssh_buffer buffer);
 LIBSSH_API uint32_t ssh_buffer_get_len(ssh_buffer buffer);
+
+LIBSSH_API int pki_sign_string(ssh_key privkey, ssh_string input, ssh_string* output);
+LIBSSH_API int pki_verify_string(ssh_key pubkey, ssh_string sig_blob, ssh_string input);
 
 #ifndef LIBSSH_LEGACY_0_4
 #include "libssh/legacy.h"
