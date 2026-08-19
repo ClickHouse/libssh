@@ -1694,6 +1694,10 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
             src = session->opts.ProxyCommand;
             break;
 
+        case SSH_OPTIONS_IDENTITY_AGENT:
+            src = session->opts.agent_socket;
+            break;
+
         case SSH_OPTIONS_KNOWNHOSTS:
             src = session->opts.knownhosts;
             break;
