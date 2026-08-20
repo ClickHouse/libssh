@@ -1577,6 +1577,16 @@ int ssh_options_get_port(ssh_session session, unsigned int* port_target) {
  *                remote host. When not explicitly set, it will be read
  *                from the ~/.ssh/config file.
  *
+ *              - SSH_OPTIONS_IDENTITY_AGENT:
+ *                Get the socket of the authentication agent to use, as it is
+ *                configured by `IdentityAgent`. When not explicitly set, it
+ *                will be read from the ~/.ssh/config file.
+ *
+ *              - SSH_OPTIONS_IDENTITIES_ONLY:
+ *                Get whether only the configured identities may be used for
+ *                authentication, as "yes" or "no". When not explicitly set,
+ *                it will be read from the ~/.ssh/config file.
+ *
  *              - SSH_OPTIONS_GLOBAL_KNOWNHOSTS:
  *                Get the path to the global known_hosts file being used.
  *
@@ -1696,6 +1706,11 @@ int ssh_options_get(ssh_session session, enum ssh_options_e type, char** value)
 
         case SSH_OPTIONS_IDENTITY_AGENT:
             src = session->opts.agent_socket;
+            break;
+
+        case SSH_OPTIONS_IDENTITIES_ONLY:
+            /* This option is a boolean, it is reported the same way it is spelled in the configuration file. */
+            src = (char *)(session->opts.identities_only ? "yes" : "no");
             break;
 
         case SSH_OPTIONS_KNOWNHOSTS:
