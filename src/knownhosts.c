@@ -485,6 +485,7 @@ struct ssh_list *ssh_known_hosts_get_algorithms(ssh_session session)
         ssh_list_remove(entry_list, it);
     }
     ssh_list_free(entry_list);
+    entry_list = NULL;
     if (list_error) {
         goto error;
     }
