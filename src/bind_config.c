@@ -242,9 +242,14 @@ static void local_parse_glob(ssh_bind bind,
                              uint8_t *seen,
                              unsigned int depth)
 {
+#ifdef __FILC__
+    /* FilC's libc provides glob_t without the non-standard gl_flags member. */
+    glob_t globbuf = {0};
+#else
     glob_t globbuf = {
         .gl_flags = 0,
     };
+#endif
     int rt;
     u_int i;
 
