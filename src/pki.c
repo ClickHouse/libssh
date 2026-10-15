@@ -3527,6 +3527,7 @@ int sshsig_sign(const void *data,
                              ssh_buffer_get_len(tosign));
 #else
         SSH_LOG(SSH_LOG_WARN, SK_NOT_SUPPORTED_MSG);
+        rc = SSH_ERROR;
         goto cleanup;
 #endif
     } else {
@@ -3538,6 +3539,7 @@ int sshsig_sign(const void *data,
     }
     if (sig == NULL) {
         SSH_LOG(SSH_LOG_TRACE, "Failed to sign data with private key");
+        rc = SSH_ERROR;
         goto cleanup;
     }
 
