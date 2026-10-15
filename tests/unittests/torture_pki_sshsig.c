@@ -796,6 +796,36 @@ static void torture_sshsig_error_cases_all_combinations(void **state)
     assert_int_equal(rc, SSH_ERROR);
 }
 
+/* `pki_sign_data` refuses a key without private material, and `sshsig_sign` used to reach `cleanup`
+ * from its `sig == NULL` branch without setting `rc`. It then returned the `SSH_OK` that
+ * `sshsig_prepare_data` had left there, while the out parameter stayed NULL, so a caller following
+ * the documented contract - `SSH_OK` means the signature was allocated - dereferences NULL. The same
+ * applies to a key that the signing backend rejects, for example an RSA key below the FIPS minimum
+ * modulus on a FIPS build, which is how this was found. */
+static void torture_sshsig_sign_error_leaves_no_signature(void **state)
+{
+    struct sshsig_st *test_state = *state;
+    ssh_key pubkey = NULL;
+    char *signature = NULL;
+    int rc;
+
+    rc = ssh_pki_export_privkey_to_pubkey(test_state->rsa_key, &pubkey);
+    assert_int_equal(rc, SSH_OK);
+    assert_non_null(pubkey);
+
+    rc = sshsig_sign(input,
+                     input_len,
+                     pubkey,
+                     NULL, /* pki_context */
+                     test_namespace,
+                     SSHSIG_DIGEST_SHA2_256,
+                     &signature);
+    assert_int_equal(rc, SSH_ERROR);
+    assert_null(signature);
+
+    ssh_key_free(pubkey);
+}
+
 int torture_run_tests(void)
 {
     int rc;
@@ -818,6 +848,10 @@ int torture_run_tests(void)
         /* Comprehensive error case testing */
         cmocka_unit_test_setup_teardown(
             torture_sshsig_error_cases_all_combinations,
+            setup_sshsig_compat,
+            teardown_sshsig_compat),
+        cmocka_unit_test_setup_teardown(
+            torture_sshsig_sign_error_leaves_no_signature,
             setup_sshsig_compat,
             teardown_sshsig_compat),
     };
